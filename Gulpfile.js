@@ -10,11 +10,11 @@ const reload = browserSync.reload;
 var folder = {
   dist:'dist',
   html:{
-    main:"src/*.html",
-    includes:"src/**/*.html",
+    main:"src/pages/**/*.html",
+    includes:"src/templates",
   },
   styles:{
-    src:"src/assets/sass/*.scss",
+    src:"src/assets/sass/**/*.scss",
     dist:"dist/assets/css",
   }
 
@@ -23,20 +23,35 @@ var folder = {
 // Compile sass into CSS & auto-inject into browsers
 gulp.task('sass', function() {
     return gulp.src(folder.styles.src)
-      .pipe($.sass())
+      .pipe($.sass().on('error', $.sass.logError))
       .pipe(gulp.dest(folder.styles.dist))
       .pipe(browserSync.stream());
 });
 
-gulp.task('serve', ['sass'], function() {
+gulp.task('nunjucks', function() {
+  // Gets .html and .nunjucks files in pages
+  return gulp.src(folder.html.main)
+  // Renders template with nunjucks
+  .pipe($.nunjucksRender({
+      path: [folder.html.includes]
+    }))
+  // output files in app folder
+  .pipe(gulp.dest(folder.dist))
+});
 
-    del(folder.dist+'/*');
-    gulp.src(folder.html.main).pipe($.copy('dist',{prefix:1}));
-    gulp.watch(folder.styles.src, ['sass']);
-    gulp.watch([folder.html.main,folder.html.includes]).on('change', browserSync.reload);
+// Clear folder before do the magic
+gulp.task('clean',function(){
+  return del(folder.dist);
+});
 
-    browserSync.init({
-        server: "./"+folder.dist
-    });
+
+gulp.task('serve', ['clean','sass','nunjucks'], function() {
+
+      gulp.watch(folder.styles.src, ['sass']).on('change', reload);
+      gulp.watch([folder.html.main,folder.html.includes],['nunjucks']).on('change', reload);
+
+      browserSync.init({
+          server: "./"+folder.dist
+      });
 
 });
